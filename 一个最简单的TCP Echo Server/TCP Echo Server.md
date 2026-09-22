@@ -100,6 +100,7 @@ std::cout << "new client fd: " << clnt_sockfd
         << "! IP: " << inet_ntoa(clnt_addr.sin_addr) 
         << " Port:" << htons(clnt_addr.sin_port) << std::endl;
 ```
+同时`accpet`是一个阻塞操作，只要没有客户端连接，就会一直呈阻塞态，无法执行下面的代码。
 
 
 至此我们的测试连接服务器已经可以正常工作了，让我们写一个测试客户端来检验一下成果。
@@ -120,3 +121,129 @@ connect(sockfd, (sockadd*)serv_addr, sizeof(serv_addr));
 
 
 我们可以使用`Makefile`进行编译测试。
+
+## 添加常规的错误检测
+
+对代码可能出错的部分添加错误日志输出程序将有助于我们日常维护代码，因此我们将在`utils/util.h`下添加如下代码
+```cpp
+#pragam once
+#include <string>
+
+errif(bool, const std::string*);
+```
+以及在`utils/util.cpp`中添加具体实现代码
+```cpp
+errif(bool condition, const std::string *errmsg){
+    if(bool){
+        perror(errmsg);
+        exit(EXIT_FAILURE);
+    }
+}
+```
+
+此操作会在程序出现问题时，进行错误消息的提示，并终止程序的进行。
+
+对现有代码段进行更新：
+### 更新后的 socket 创建部分
+```cpp
+int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+errif(sockfd == -1, "socket create error");
+```
+
+### 更新后的 bind() 部分
+```cpp
+errif(
+    bind(sockfd, (sockaddr*)&serv_addr, sizeof(serv_addr)) == -1,
+    "socket bind error"
+);
+```
+
+### 更新后的 listen() 部分
+```cpp
+errif(
+    listen(sockfd, SOMAXCONN) == -1,
+    "socket listen error"
+);
+```
+
+### 更新后的 connect() 部分
+```cpp
+errif(
+    connect(sockfd, (sockaddr*)&serv_addr, sizeof(serv_addr)) == -1,现流程
+![Echo]
+    "socket connect error"
+);
+```
+
+## 回显部分
+### 实现流程
+![Echo流程](/一个最简单的TCP%20Echo%20Server/img/Echo流程.png)
+
+### 客户端
+客户端创建定长缓冲区，并向缓冲区内写入数据
+```cpp
+char buf[1024];
+bzero(&buf, sizeof(buf));
+std::cin >> buf;
+```
+
+将数据从缓冲区写入服务端socket，并返回本次写入数据的大小，并再次清空缓冲区，准备从服务端socket读取数据
+```cpp
+ssize_t write_bytes = write(sockfd, buf, sizeof(buf));
+if(write_bytes == -1){
+    std::cout << "socket alreadly disconnected, can't write any more" << std::endl;
+    break;
+};
+bzero(&buf, sizeof(buf));
+```
+
+从服务端socket读取数据，并返回此次读取数据的大小，同时进行判断
+```cpp
+ssize_t read_bytes  = read(sockfd, buf, sizeof(buf));
+if(read_bytes > 0){
+    std::cout << "message from server fd " << sockfd
+        << ": " << buf << std::endl;
+}else if(read_bytes == 0){
+    std::cout << "server fd " << sockfd << " disconnected" << std::endl;
+    break;
+}else if(read_bytes == -1){
+    close(sockfd);
+    errif(
+        true,
+        "socket read error"
+    );
+}
+```
+
+在程序结束的时候记得收回文件描述符
+```cpp
+close(sockfd);
+```
+
+### 服务端
+服务端的逻辑与客户端是相通的，只是少了写入部分
+```cpp
+char buf[READ_BUFFER];
+while(true){
+    bzero(&buf, sizeof(buf));
+    ssize_t read_bytes = read(clnt_sockfd, buf, sizeof(buf));
+    if(read_bytes > 0){
+        std::cout << "message from client fd " << clnt_sockfd
+            << ": " << buf << std::endl;
+        write(clnt_sockfd, buf, sizeof(buf));
+    }else if(read_bytes == 0){
+        std::cout << "client fd " << clnt_sockfd << " disconnected" << std::endl;
+        break;
+    }else if(read_bytes == -1){
+        close(clnt_sockfd);
+        errif(
+            true,
+            "socket read error"
+        );
+    }
+}
+close(clnt_sockfd);
+```
+
+## 总结
+至此，我们已经完成了一个一对一的 TCP Echo Server。完整代码示例可以在[演示示例](./src/)中进行查阅。

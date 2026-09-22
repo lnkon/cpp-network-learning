@@ -1,5 +1,5 @@
 server:
-	g++ server.cpp -o server && \
-	g++ client.cpp -o client
+	g++ utils/util.cpp server.cpp -o server && \
+	g++ utils/util.cpp client.cpp -o client
 clean:
 	rm server && rm client

@@ -1,3 +1,4 @@
+#include "utils/util.h"
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <strings.h>
@@ -8,6 +9,11 @@
 
 int main(){
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    errif(
+        sockfd == -1,
+        "socket create error"
+    );
+
     struct sockaddr_in serv_addr;
     bzero(&serv_addr, sizeof(serv_addr));
     
@@ -15,7 +21,10 @@ int main(){
     serv_addr.sin_port = htons(8080);
     serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
 
-    connect(sockfd, (sockaddr*)&serv_addr, sizeof(serv_addr));
+    errif(
+        connect(sockfd, (sockaddr*)&serv_addr, sizeof(serv_addr)) == -1,
+        "socket connect error"
+    );
     
     char buf[WRITE_BUFFER];
     while(true){
@@ -31,8 +40,11 @@ int main(){
             std::cout << "server fd " << sockfd << " disconnected" << std::endl;
             break;
         }else if(read_bytes == -1){
-            std::cout << "socket read error" << std::endl;
-            break;
+            close(sockfd);
+            errif(
+                true,
+                "socket read error"
+            );
         }
     }
     close(sockfd);
