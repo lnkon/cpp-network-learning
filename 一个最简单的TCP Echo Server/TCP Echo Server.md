@@ -37,7 +37,7 @@ socket 在计算机通讯领域被称作 "套接字"，通过套接字一台计�
 **数据的发送和接收是同步的**：接收次应该和发送次数相同。数据包套接字一般用于需要实时性的情况，例如：微信视频聊天语音聊天等。
 
 ## 实现流程
-![TCP_Echo_Server流程图](./img/TCP_Echo_server流程图.png)
+![TCP_Echo_Server流程图](./img/TCP_Echo_server.png)
 
 ## 代码实现
 ### 服务端
@@ -177,7 +177,7 @@ errif(
 
 ## 回显部分
 ### 实现流程
-![Echo流程](/一个最简单的TCP%20Echo%20Server/img/Echo流程.png)
+![Echo流程](/一个最简单的TCP%20Echo%20Server/img/Echo.png)
 
 ### 客户端
 客户端创建定长缓冲区，并向缓冲区内写入数据
