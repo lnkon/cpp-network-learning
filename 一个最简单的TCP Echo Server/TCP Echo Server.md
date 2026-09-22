@@ -100,3 +100,23 @@ std::cout << "new client fd: " << clnt_sockfd
         << "! IP: " << inet_ntoa(clnt_addr.sin_addr) 
         << " Port:" << htons(clnt_addr.sin_port) << std::endl;
 ```
+
+
+至此我们的测试连接服务器已经可以正常工作了，让我们写一个测试客户端来检验一下成果。
+
+### 客户端
+```cpp
+int socfd = socket(AF_INET, SOCK_STREAM, 0);
+struct sockaddr_in serv_addr; 
+bzero(&sockfd, sizeof(sockfd));
+serv_addr.sin_family = AF_INET;
+serv_addr.sin_port = htons(8080)
+serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+connect(sockfd, (sockadd*)serv_addr, sizeof(serv_addr));
+```
+
+
+客户端通过建立的 socket 请求连接服务端的监听 socket，进而服务器会 accept 并创建一个用于 TCP 通讯的 socket。此时客户端的socket和服务端的新socket以及建立了TCP连接，之后所有的通讯均围绕在此处。
+
+
+我们可以使用`Makefile`进行编译测试。
