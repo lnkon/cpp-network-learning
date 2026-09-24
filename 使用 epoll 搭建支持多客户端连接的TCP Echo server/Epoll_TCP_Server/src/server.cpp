@@ -90,7 +90,7 @@ int main(){
                             (errno == EWOULDBLOCK)
                         )
                     ){
-                        std::cout << "finish reading noce, errno: " << errno << std::endl;
+                        std::cout << "finish reading noce, errno: " << errno << std::endl;  
                         break;
                     }
                 }
