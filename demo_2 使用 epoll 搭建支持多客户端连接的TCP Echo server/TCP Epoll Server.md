@@ -79,3 +79,89 @@ while(true){
 我们注意到在当前并没有设置可读事件发生时是来自于监听 socket 还是 已连接的客户端有消息。因此我们需要进行区分。
 
 ### 监听 socket 被触发
+
+在 epoll 返回触发事件的文件描述符传回后，对文件描述符进行判断，判断是否来自于监听 socket 本身，如果来自本身则需要创建用于连接的客户端socket
+```cpp
+if(events[i].data.fd == sockfd){
+    struct sockaddr_in clnt_addr;
+    bzero(&clnt_addr, sizeof(clnt_addr));
+    socklen_t clnt_addr_len = sizeof(clnt_addr);
+    int clnt_sockfd = accept(sockfd, (sockaddr*)&clnt_addr, &clnt_addr_len);
+    errif(
+        clnt_sockfd == -1,
+        "socker accept error"
+    );
+    std::cout << "new client fd: " << clnt_sockfd 
+        << "! IP: " << inet_ntoa(clnt_addr.sin_addr) 
+        << " Port:" << htons(clnt_addr.sin_port) << std::endl;
+}
+```
+
+同时，我们仍然需要对新创建出的用于连接的socket添加可被触发的事件，为其添加可读事件边缘出发，以及不阻塞。
+```cpp
+bzero(&ev, sizeof(ev));
+ev.data.fd = clnt_sockfd;
+ev.events = EPOLLIN | EPOLLET;
+setnonblocking(clnt_sockfd);
+epoll_ctl(epfd, EPOLL_CTL_ADD, clnt_sockfd, &ev);
+```
+
+### 来自客户端的可读事件
+创建读取缓冲区，用于读取内部通讯 socket 中的数据
+```cpp
+char buf[READ_BUFFER];
+
+bzero(&buf, sizeof(buf));
+ssize_t read_bytes = read(events[i].data.fd, buf, sizeof(buf));
+```
+
+> 值得注意的是：由于我们采用 ET 边缘触发模式，并且设置了定长字符读取，我们需要在一次读取操作内将数据完全读取出来，否则将面临数据丢失的风险！
+
+创建循环，进行读取操作，并尝试区分四种基本情况：
+- 读取到数据
+- 对方关闭连接
+- read 操作因为某次操作被迫终止，尝试重新进行读取
+- 读取完成
+
+
+我们将区分四种不同的情况。
+
+正常读取到数据：
+```cpp
+if(read_bytes > 0){
+    std::cout << "message from client fd " << events[i].data.fd
+        << ": " << buf << std::endl;
+    write(events[i].data.fd, buf, sizeof(buf));
+}
+```
+
+客户端关闭连接，传输通道关闭，回收分配给客户端的文件描述符：
+```cpp
+else if(read_bytes == 0){
+    close(events[i].data.fd);
+    break;
+}
+```
+
+read 操作因为某次操作被迫终止，尝试重新进行读取：
+```cpp
+else if(read_bytes == -1 && errno == EINTR){
+    std::cout << "continue reading";
+    continue;
+}
+```
+
+正常结束，没有可读数据：
+```cpp
+else if(read_bytes == -1 && ((errno == EAGAIN) || (errno == EWOULDBLOCK))){
+    std::cout << "finish reading noce, errno: " << errno << std::endl;  
+    break;
+}    
+```
+
+程序结束后，收回服务端的文件描述符。
+```cpp
+close(sockfd);
+```
+
+> 客户端与前一个demo的源码一样，本文的源码见[此处](/demo_2%20使用%20epoll%20搭建支持多客户端连接的TCP%20Echo%20server/Epoll_TCP_Server/)
