@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/socket.h>
-#include <cstring.h>
+#include <strings.h>
 
 Socket::Socket() : fd(-1){
     fd = socket(AF_INET, SOCK_STREAM, 0);
