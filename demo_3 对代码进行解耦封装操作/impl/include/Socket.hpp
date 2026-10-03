@@ -1,13 +1,12 @@
 #pragma once
 
 class InetAddress;
-class Socket
-{
-    private:
+class Socket{
+private:
     int fd;
-    public:
+public:
     Socket();
-    Socket(int);
+    Socket(int _fd);
     ~Socket();
 
     void bind(InetAddress*);
