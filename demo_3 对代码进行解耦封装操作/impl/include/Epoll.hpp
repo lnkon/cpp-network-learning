@@ -6,7 +6,7 @@ class Channel;
 class Epoll{
 private:
     int epfd;
-    struct epoll_event *eventsl;
+    struct epoll_event *events;
 public:
     Epoll();
     ~Epoll();
